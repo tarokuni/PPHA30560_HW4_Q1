@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <style>
+        .chart-container {
+            max-width: 1050px;
+            /* border: 2px solid red; */
+            margin: 0 auto;
+            /* auto centers the div */
+            font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+        }
+
+        svg {
+            /* border: 2px solid purple; */
+            overflow: visible;
+        }
+
+        h1 {
+            margin: 0 auto;
+        }
+
+        p {
+            margin-top: 35px;
+            font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+        }
+
+        .x .tick line {
+            stroke: rgba(0, 0, 0, .2);
+        }
+
+        .y .tick line {
+            stroke: rgba(0, 0, 0, .2);
+            stroke-dasharray: 5 5;
+        }
+
+        .x .domain {
+            display: none;
+        }
+
+        .y .domain {
+            display: none;
+        }
+
+        .y .tick text {
+            font-size: 14px;
+            fill: #333;
+
+        }
+
+        .x .tick text {
+            font-size: 14px;
+            fill: #333;
+        }
+
+        .micro {
+            font-size: 14px;
+            fill: #333;
+        }
+
+        .label {
+            font-size: 35px;
+            font-weight: 200;
+        }
+
+        .axis-label {
+            font-size: 12px;
+            text-transform: uppercase;
+        }
+
+        .source {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+
+    </style>
+</head>
+
+<body>
+    <div class="chart-container">
+        <h1 class="headline">
+            Air Quality in New Delhi
+        </h1>
+
+        <h3>
+            Daily air quality based on PM2.5 (2018 - 2019)
+        </h3>
+
+        <svg width="500px" height="1000px">
+        </svg>
+        
+        <p> 
+        
+        </p>
+        <p>
+            Data from The New York Times
+        </p>
+    </div>
+</body>
+
+<!-- add your script blocks at the end -->
+<script src="https://d3js.org/d3.v6.min.js"></script>
+<!-- we're using d3 version 6 (the latest version) for all out work -->
+
+<script>
+    console.log(d3)
+    let width = 500;
+    let height =1000;
+
+    let svg = d3.select("body").select("svg")
+
+    //console.log
+
+    //arrays
+    //objects
+    //functions
+    let margin = { top: 0, right: 0, bottom: 0, left: 0 };
+
+
+    d3.csv("India-NCT-Delhi-daily.csv").then(function (data) {
+        console.log("loaded")
+
+        data.forEach(d => {
+            d.date = new Date(d.date + "T00:00")
+            d.avg = +d.avg
+            d.max = +d.max
+            d.min = +d.min
+        })
+
+        // let groups = data.map(d => d.group)
+        // console.log(data, groups)
+        console.log({data})
+
+        let x = d3.scaleBand()
+            .domain(d3.map(data, d => d.date))
+            .range([margin.left, width - margin.right]);
+
+        let xAxisSettings = d3.axisBottom(x)
+            .tickFormat((d, i) => {
+                if (d.getDate() == 1) {
+                    return d3.timeFormat("%b")(d) 
+                } else {
+                    return ""
+                }
+            })
+            .ticks(12)
+            .tickSize(10)
+            .tickPadding(5)
+
+
+        let xAxisTicks = svg.append("g")
+            .attr("class", "x axis")
+            .call(xAxisSettings)
+            .attr("transform", `translate(0,${height - margin.bottom})`)
+
+        
+        let ticklength = d3.selectAll("g.x.axis g.tick line")
+            .attr("y1", function(d){
+                if (d.getDate() == 1) {
+                    return 0;
+                } else {
+                    return 10;
+                }
+            });
+
+
+        let y = d3.scaleLinear()
+            .domain(d3.extent(data.map(function (d) {return d.max})))
+            //.paddingInner(.02)
+            .range([height - margin.bottom, margin.top])
+
+        let yAxisSettings = d3.axisLeft(y) //set axis to the left
+            .tickValues([50,100,150,200,250,300,350,400,500,700,900]) //approx how many ticks, the function will not necesarily give you that number
+            .tickSize(-width) //size of tick lines
+            .tickPadding(10) //distance from tick labels to tick marks
+            // .tickFormat(function (d) { 
+            //     if (d == 900) {
+            //         return d + " µg/m^3";
+            //     } else {
+            //         return d
+            //     }
+            // })
+
+        let yAxisTicks = svg.append("g")
+            .attr("class", "y axis")
+            .call(yAxisSettings)
+            .attr("transform", `translate(${margin.left},0)`)
+            
+
+        let bars = svg.append("g")
+            .selectAll("rect")
+            .data(data)
+            .join("rect")
+            .attr("x", (d, i) => x(d.date))
+            .attr("width", x.bandwidth())
+            .attr("y", d => y(d.max))
+            .attr("height", d => y(0) - y(d.max))
+            .style("fill", "rgba(150, 150, 150, 0.3)")
+
+        let bars2 = svg.append("g")
+            .selectAll("rect")
+            .data(data)
+            .join("rect")
+            .attr("x", (d, i) => x(d.date))
+            .attr("width", x.bandwidth())
+            .attr("y", d => y(d.avg))
+            .attr("height", d => y(0) - y(d.avg))
+            .style("fill", function (d) {
+                if (d.avg > 500){
+                    return d3.interpolateYlOrRd(1)
+                } else if (d.avg > 250) {
+                    return d3.interpolateYlOrRd(0.9)
+                } else if (d.avg > 150) {
+                    return d3.interpolateYlOrRd(0.75)
+                } else if (d.avg > 60) {
+                    return d3.interpolateYlOrRd(0.6)
+                } else if (d.avg > 35) {
+                    return d3.interpolateYlOrRd(0.45)
+                } else {
+                    return d3.interpolateYlOrRd(0.3)
+                }
+            })
+
+        let zeroline = svg.append("line") //we can add additional highlight lines
+            .attr("x1", margin.left)
+            .attr("x2",  width +  3 * margin.right)
+            .attr("y1", y(0))
+            .attr("y2", y(0))
+            .style("stroke", "#333")
+            .style("stroke-width", 1.5)
+            .style("opacity", 0.8)
+
+
+        let maximum = svg.append("text")
+            .attr("class", "explain")
+            .attr("transform",
+                    "translate(" + (105) + " ," + 
+                                (height - 370 ) + ")")
+            //.attr("dy", "1em")
+            .style("fill", "grey")
+            .style("font-size", "15px")
+            .text("-- Maximum hour")
+
+        let average = svg.append("text")
+            .attr("class", "explain")
+            .attr("transform",
+                    "translate(" + (155) + " ," + 
+                                (height - 265 ) + ")")
+            //.attr("dy", "1em")
+            .style("text-anchor", "middle")
+            .style("font-size", "15px")
+            .text("-- Daily average")
+
+        let micro = svg.append("text")
+            .attr("class", "micro")
+            .attr("transform",
+                    "translate(" + (-5) + " ," + 
+                                (93) + ")")
+            .text("micrograms per cubic meter")
+    })
+
+</script>
